@@ -327,7 +327,8 @@ class ExperimentDriver(object):
             'logdir': self.trial_dir,
             'hyperparameter_space': json.dumps(self.searchspace.to_dict()),
             # 'versioned_resources': versioned_resources,
-            'description': self.description}
+            'description': self.description,
+            'random_seed': self._random_seed}
 
         if self.experiment_done:
             experiment_json['status'] = "FINISHED"

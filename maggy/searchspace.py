@@ -143,7 +143,7 @@ class Searchspace(object):
     def _set_random_seed(self, seed=None):
         """Sets the seed of the random number generator.
 
-        :param seed: Integer seed value, optional, defaults to None
+        :param seed: Integer seed value, defaults to None
         :type seed: int, optional
         """
         self._random_seed = seed

@@ -29,7 +29,7 @@ elastic_id = 1
 experiment_json = None
 
 
-def lagom(map_fun, searchspace=None, optimizer=None, direction='max', num_trials=1, name='no-name', hb_interval=1, es_policy='median', es_interval=300, es_min=10, description=''):
+def lagom(map_fun, searchspace=None, optimizer=None, direction='max', num_trials=1, name='no-name', hb_interval=1, es_policy='median', es_interval=300, es_min=10, description='', random_seed=None):
     """Launches a maggy experiment for hyperparameter optimization.
 
     Given a search space, objective and a model training procedure `map_fun`
@@ -67,6 +67,9 @@ def lagom(map_fun, searchspace=None, optimizer=None, direction='max', num_trials
     :type es_min: int, optional
     :param description: A longer description of the experiment.
     :type description: str, optional
+    :param random_seed: Initialize the random number generator with a seed.
+        Provide only a value if reproducability is desired. Defaults to None.
+    :type random_seed: int, optional
     :raises RuntimeError: An experiment is currently running.
     :return: A dictionary indicating the best trial and best hyperparameter
         combination with it's performance metric
@@ -112,7 +115,8 @@ def lagom(map_fun, searchspace=None, optimizer=None, direction='max', num_trials
         # start experiment driver
         exp_driver = ExperimentDriver(searchspace, optimizer, direction,
             num_trials, name, num_executors, hb_interval, es_policy,
-            es_interval, es_min, description, app_dir, log_dir, trial_dir)
+            es_interval, es_min, description, app_dir, log_dir, trial_dir,
+            random_seed)
 
         # Make SparkUI intuitive by grouping jobs
         sc.setJobGroup("Maggy Experiment", "{}".format(name))
