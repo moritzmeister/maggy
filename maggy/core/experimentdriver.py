@@ -25,7 +25,9 @@ class ExperimentDriver(object):
 
     SECRET_BYTES = 8
 
-    def __init__(self, searchspace, optimizer, direction, num_trials, name, num_executors, hb_interval, es_policy, es_interval, es_min, description, app_dir, log_dir, trial_dir):
+    def __init__(self, searchspace, optimizer, direction, num_trials, name,
+        num_executors, hb_interval, es_policy, es_interval, es_min,
+        description, app_dir, log_dir, trial_dir, random_seed):
 
         global driver_secret
 
@@ -39,6 +41,10 @@ class ExperimentDriver(object):
         else:
             raise Exception(
                 "No valid searchspace. Please use maggy Searchspace class.")
+
+        # Set the random seed
+        self._random_seed = random_seed
+        self.searchspace._set_random_seed(self._random_seed)
 
         if optimizer is None:
             if len(self.searchspace.names()) == 0:

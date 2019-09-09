@@ -140,6 +140,15 @@ class Searchspace(object):
 
         return default
 
+    def _set_random_seed(self, seed=None):
+        """Sets the seed of the random number generator.
+
+        :param seed: Integer seed value, optional, defaults to None
+        :type seed: int, optional
+        """
+        self._random_seed = seed
+        random.seed(self._random_seed)
+
     def get_random_parameter_values(self, num):
         """Generate random parameter dictionaries, e.g. to be used for initializing an optimizer.
 
