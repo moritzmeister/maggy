@@ -27,9 +27,21 @@ running = False
 run_id = None
 elastic_id = 1
 experiment_json = None
+maggy_seed = None
 
+def seed(a=None):
+    """Initialize the seed of the random number generator of Maggy. This
+    seed does not influence the random seed of your machine learning framework,
+    e.g. Keras/TensorFlow.
 
-def lagom(map_fun, searchspace=None, optimizer=None, direction='max', num_trials=1, name='no-name', hb_interval=1, es_policy='median', es_interval=300, es_min=10, description='', random_seed=None):
+    :param a: An integer to initialize the random seed. If a is omitted or
+        None, the current system time is used, defaults to None.
+    :type a: int, optional
+    """
+    global maggy_seed
+    maggy_seed = a
+
+def lagom(map_fun, searchspace=None, optimizer=None, direction='max', num_trials=1, name='no-name', hb_interval=1, es_policy='median', es_interval=300, es_min=10, description=''):
     """Launches a maggy experiment for hyperparameter optimization.
 
     Given a search space, objective and a model training procedure `map_fun`
@@ -67,9 +79,6 @@ def lagom(map_fun, searchspace=None, optimizer=None, direction='max', num_trials
     :type es_min: int, optional
     :param description: A longer description of the experiment.
     :type description: str, optional
-    :param random_seed: Initialize the random number generator with a seed.
-        Provide only a value if reproducability is desired. Defaults to None.
-    :type random_seed: int, optional
     :raises RuntimeError: An experiment is currently running.
     :return: A dictionary indicating the best trial and best hyperparameter
         combination with it's performance metric
@@ -78,6 +87,7 @@ def lagom(map_fun, searchspace=None, optimizer=None, direction='max', num_trials
     assert num_trials > 0, "number of trials should be greater than zero"
 
     global running
+    global maggy_seed
 
     if running:
         raise RuntimeError("An experiment is currently running.")
@@ -116,7 +126,7 @@ def lagom(map_fun, searchspace=None, optimizer=None, direction='max', num_trials
         exp_driver = ExperimentDriver(searchspace, optimizer, direction,
             num_trials, name, num_executors, hb_interval, es_policy,
             es_interval, es_min, description, app_dir, log_dir, trial_dir,
-            random_seed)
+            maggy_seed)
 
         # Make SparkUI intuitive by grouping jobs
         sc.setJobGroup("Maggy Experiment", "{}".format(name))
