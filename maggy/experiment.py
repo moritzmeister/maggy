@@ -87,7 +87,6 @@ def lagom(map_fun, searchspace=None, optimizer=None, direction='max', num_trials
     assert num_trials > 0, "number of trials should be greater than zero"
 
     global running
-    global maggy_seed
 
     if running:
         raise RuntimeError("An experiment is currently running.")
@@ -97,6 +96,7 @@ def lagom(map_fun, searchspace=None, optimizer=None, direction='max', num_trials
         global experiment_json
         global elastic_id
         global run_id
+        global maggy_seed
         running = True
 
         sc = hopsutil._find_spark().sparkContext
