@@ -259,6 +259,3 @@ class Searchspace(config.Config):
 
     def __str__(self):
         return json.dumps(self.to_dict(), sort_keys=True)
-
-    def json(self):
-        return json.dumps(self.to_dict(), sort_keys=True)

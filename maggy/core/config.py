@@ -14,6 +14,7 @@
 #   limitations under the License.
 #
 
+import json
 from abc import ABC, abstractmethod
 
 
@@ -24,3 +25,6 @@ class Config(ABC):
     @abstractmethod
     def to_dict(self):
         pass
+
+    def json(self):
+        return json.dumps(self.to_dict(), sort_keys=True)

@@ -201,7 +201,7 @@ def lagom(
             name,
             exp_function,
             "MAGGY",
-            exp_driver.searchspace.json(),
+            exp_driver.config.json(),
             description,
             app_id,
             direction,
