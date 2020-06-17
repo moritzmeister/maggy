@@ -34,6 +34,7 @@ from hops.experiment_impl.util import experiment_utils
 
 from maggy import util
 from maggy.core import rpc
+from maggy.core.config import Config
 from maggy.trial import Trial
 from maggy.earlystop import NoStoppingRule
 
@@ -45,7 +46,7 @@ class Driver(ABC):
     SECRET_BYTES = 8
 
     def __init__(
-        self, name, description, direction, num_executors, hb_interval, log_dir
+        self, name, description, direction, config, num_executors, hb_interval, log_dir
     ):
         global driver_secret
 
@@ -70,6 +71,17 @@ class Driver(ABC):
         self.log_file = log_dir + "/maggy.log"
         self.log_dir = log_dir
         self.exception = None
+
+        if isinstance(config, Config) or config is None:
+            self.config = config
+        else:
+            raise Exception(
+                "The experiment's config should be an instance of maggy.Searchspace "
+                "or maggy.ablation.AblationStudy, "
+                "but it is {0} (of type '{1}').".format(
+                    str(self.config), type(self.config).__name__
+                )
+            )
 
         if isinstance(direction, str) and direction.lower() in ["min", "max"]:
             self.direction = direction.lower()
@@ -324,10 +336,6 @@ class Driver(ABC):
         self.fd.flush()
         self.fd.close()
 
-    @abstractmethod
-    def config_to_dict(self):
-        pass
-
     def json(self, sc):
         """Get all relevant experiment information in JSON format.
         """
@@ -352,7 +360,7 @@ class Driver(ABC):
         }
 
         experiment_json["controller"] = self.controller.name()
-        experiment_json["config"] = json.dumps(self.config_to_dict())
+        experiment_json["config"] = json.dumps(self.config.to_dict())
 
         if self.experiment_done:
             experiment_json["status"] = "FINISHED"

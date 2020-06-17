@@ -17,7 +17,6 @@
 import json
 
 from maggy import util
-from maggy.searchspace import Searchspace
 from maggy.earlystop import NoStoppingRule
 from maggy.ablation.ablationstudy import AblationStudy
 from maggy.ablation.ablator.loco import LOCO
@@ -29,8 +28,7 @@ class Driver(base.Driver):
     def __init__(
         self,
         ablator,
-        searchspace,
-        ablation_study,
+        config,
         name,
         description,
         direction,
@@ -39,35 +37,23 @@ class Driver(base.Driver):
         log_dir,
     ):
         super().__init__(
-            name, description, direction, num_executors, hb_interval, log_dir
+            name, description, direction, config, num_executors, hb_interval, log_dir
         )
         # set up an ablation study experiment
         self.earlystop_check = NoStoppingRule.earlystop_check
 
-        if isinstance(ablation_study, AblationStudy):
-            self.ablation_study = ablation_study
-        else:
+        if not isinstance(self.config, AblationStudy):
             raise Exception(
-                "The experiment's ablation study configuration should be an instance of "
+                "The experiment's configuration should be an instance of "
                 "maggy.ablation.AblationStudy, "
                 "but it is {0} (of type '{1}').".format(
-                    str(ablation_study), type(ablation_study).__name__
-                )
-            )
-
-        if not searchspace:
-            self.searchspace = Searchspace()
-        else:
-            raise Exception(
-                "The experiment's search space should be None for ablation experiments, "
-                "but it is {0} (of type '{1}').".format(
-                    str(searchspace), type(searchspace).__name__
+                    str(self.config), type(self.config).__name__
                 )
             )
 
         if isinstance(ablator, str):
             if ablator.lower() == "loco":
-                self.controller = LOCO(ablation_study, self._final_store)
+                self.controller = LOCO(self.config, self._final_store)
                 self.num_trials = self.controller.get_number_of_trials()
                 if self.num_executors > self.num_trials:
                     self.num_executors = self.num_trials
@@ -94,10 +80,9 @@ class Driver(base.Driver):
         self.result = {"best_val": "n.a.", "num_trials": 0, "early_stopped": "n.a"}
 
         # Init controller
+        self.controller.ablation_study = self.config
+        self.controller.final_store = self._final_store
         self.controller.initialize()
-
-    def config_to_dict(self):
-        return self.ablation_study.to_dict()
 
     def log_string(self):
         log = (

@@ -150,7 +150,7 @@ def lagom(
                 num_executors = num_trials
 
             exp_driver = optimization.Driver(
-                searchspace=searchspace,
+                config=searchspace,
                 optimizer=optimizer,
                 direction=direction,
                 num_trials=num_trials,
@@ -167,8 +167,7 @@ def lagom(
         elif experiment_type == "ablation":
             exp_driver = ablation.Driver(
                 ablation_study=ablation_study,
-                ablator=ablator,
-                searchspace=None,
+                config=ablator,
                 name=name,
                 num_executors=num_executors,
                 hb_interval=hb_interval,

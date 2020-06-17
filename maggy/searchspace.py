@@ -17,8 +17,10 @@
 import json
 import random
 
+from maggy.core import config
 
-class Searchspace(object):
+
+class Searchspace(config.Config):
     """Create an instance of `Searchspace` from keyword arguments.
 
     A searchspace is essentially a set of key value pairs, defining the

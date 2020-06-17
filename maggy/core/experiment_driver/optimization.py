@@ -28,7 +28,7 @@ class Driver(base.Driver):
         self,
         num_trials,
         optimizer,
-        searchspace,
+        config,
         direction,
         es_policy,
         es_interval,
@@ -42,26 +42,24 @@ class Driver(base.Driver):
         # num_trials default 1
         # direction default 'max'
         super().__init__(
-            name, description, direction, num_executors, hb_interval, log_dir
+            name, description, direction, config, num_executors, hb_interval, log_dir
         )
 
         # CONTEXT-SPECIFIC EXPERIMENT SETUP
         self.num_trials = num_trials
 
-        if isinstance(searchspace, Searchspace):
-            self.searchspace = searchspace
-        elif searchspace is None:
-            self.searchspace = Searchspace()
-        else:
+        if not isinstance(self.config, Searchspace) and self.config is not None:
             raise Exception(
-                "The experiment's search space should be an instance of maggy.Searchspace, "
+                "The experiment's config should be an instance of maggy.Searchspace, "
                 "but it is {0} (of type '{1}').".format(
-                    str(searchspace), type(searchspace).__name__
+                    str(self.config), type(self.config).__name__
                 )
             )
+        elif self.config is None:
+            self.config = Searchspace()
 
         if optimizer is None:
-            if len(self.searchspace.names()) == 0:
+            if len(self.config.names()) == 0:
                 self.controller = SingleRun()
             else:
                 raise Exception(
@@ -73,7 +71,7 @@ class Driver(base.Driver):
             elif optimizer.lower() == "asha":
                 self.controller = Asha()
             elif optimizer.lower() == "none":
-                if len(self.searchspace.names()) == 0:
+                if len(self.config.names()) == 0:
                     self.controller = SingleRun()
                 else:
                     raise Exception(
@@ -128,14 +126,11 @@ class Driver(base.Driver):
 
         # Init controller and set references to data
         self.controller.num_trials = self.num_trials
-        self.controller.searchspace = self.searchspace
+        self.controller.searchspace = self.config
         self.controller.trial_store = self._trial_store
         self.controller.final_store = self._final_store
         self.controller.direction = self.direction
         self.controller.initialize()
-
-    def config_to_dict(self):
-        return self.searchspace.to_dict()
 
     def log_string(self):
         log = (
