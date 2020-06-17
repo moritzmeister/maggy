@@ -166,8 +166,8 @@ def lagom(
 
         elif experiment_type == "ablation":
             exp_driver = ablation.Driver(
-                ablation_study=ablation_study,
-                config=ablator,
+                config=ablation_study,
+                ablator=ablator,
                 name=name,
                 num_executors=num_executors,
                 hb_interval=hb_interval,
