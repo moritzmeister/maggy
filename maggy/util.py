@@ -17,12 +17,11 @@
 """Utility helper module for maggy experiments.
 """
 import math
-import os
 import json
+
 import numpy as np
 from pyspark import TaskContext
 
-from hops import util as hopsutil
 from hops import hdfs as hopshdfs
 from hops.experiment_impl.util import experiment_utils
 
@@ -52,7 +51,6 @@ def num_executors(sc):
     :return: Number of configured executors for Jupyter
     :rtype: int
     """
-    sc = hopsutil._find_spark().sparkContext
     try:
         return int(sc._conf.get("spark.dynamicAllocation.maxExecutors"))
     except:  # noqa: E722
@@ -93,73 +91,6 @@ def _progress_bar(done, total):
 
     bar += "]"
     return bar
-
-
-def json_default_numpy(obj):
-    if isinstance(obj, np.integer):
-        return int(obj)
-    elif isinstance(obj, np.floating):
-        return float(obj)
-    elif isinstance(obj, np.ndarray):
-        return obj.tolist()
-    else:
-        raise TypeError(
-            "Object of type {0}: {1} is not JSON serializable".format(type(obj), obj)
-        )
-
-
-def _finalize_experiment(
-    experiment_json,
-    metric,
-    app_id,
-    run_id,
-    state,
-    duration,
-    logdir,
-    best_logdir,
-    optimization_key,
-):
-    """Attaches the experiment outcome as xattr metadata to the app directory.
-    """
-    outputs = _build_summary_json(logdir)
-
-    if outputs:
-        hopshdfs.dump(outputs, logdir + "/.summary.json")
-
-    if best_logdir:
-        experiment_json["bestDir"] = best_logdir[len(hopshdfs.project_path()) :]
-    experiment_json["optimizationKey"] = optimization_key
-    experiment_json["metric"] = metric
-    experiment_json["state"] = state
-    experiment_json["duration"] = duration
-    exp_ml_id = app_id + "_" + str(run_id)
-    experiment_utils._attach_experiment_xattr(exp_ml_id, experiment_json, "FULL_UPDATE")
-
-
-def _build_summary_json(logdir):
-    """Builds the summary json to be read by the experiments service.
-    """
-    combinations = []
-
-    for trial in hopshdfs.ls(logdir):
-        if hopshdfs.isdir(trial):
-            return_file = trial + "/.outputs.json"
-            hparams_file = trial + "/.hparams.json"
-            if hopshdfs.exists(return_file) and hopshdfs.exists(hparams_file):
-                metric_arr = experiment_utils._convert_return_file_to_arr(return_file)
-                hparams_dict = _load_hparams(hparams_file)
-                combinations.append({"parameters": hparams_dict, "outputs": metric_arr})
-
-    return json.dumps({"combinations": combinations}, default=json_default_numpy)
-
-
-def _load_hparams(hparams_file):
-    """Loads the HParams configuration from a hparams file of a trial.
-    """
-    hparams_file_contents = hopshdfs.load(hparams_file)
-    hparams = json.loads(hparams_file_contents)
-
-    return hparams
 
 
 def _handle_return_val(return_val, log_dir, optimization_key, log_file):
@@ -217,20 +148,18 @@ def _clean_dir(clean_dir, keep=[]):
             hopshdfs.delete(path, recursive=True)
 
 
-def _validate_ml_id(app_id, run_id):
-    """Validates if there was an experiment run previously from the same app id
-    but from a different experiment (e.g. hops-util-py vs. maggy) module.
-    """
-    try:
-        prev_ml_id = os.environ["ML_ID"]
-    except KeyError:
-        return app_id, run_id
-    prev_app_id, _, prev_run_id = prev_ml_id.rpartition("_")
-    if prev_run_id == prev_ml_id:
-        # means there was no underscore found in string
-        raise ValueError(
-            "Found a previous ML_ID with wrong format: {}".format(prev_ml_id)
+def json_default_numpy(obj):
+    if isinstance(obj, np.integer):
+        return int(obj)
+    elif isinstance(obj, np.floating):
+        return float(obj)
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    else:
+        raise TypeError(
+            "Object of type {0}: {1} is not JSON serializable".format(type(obj), obj)
         )
-    if prev_app_id == app_id and int(prev_run_id) >= run_id:
-        return app_id, (int(prev_run_id) + 1)
-    return app_id, run_id
+
+
+def seconds_to_milliseconds(time):
+    return int(round(time * 1000))

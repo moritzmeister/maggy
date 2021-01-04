@@ -28,12 +28,15 @@ import os
 import atexit
 import time
 
-from hops import util as hopsutil
-from hops.experiment_impl.util import experiment_utils
+from pyspark.sql import SparkSession
 
-from maggy import util, tensorboard
+# from hops import util as hopsutil
+# from hops.experiment_impl.util import experiment_utils
+
+from maggy import util
 from maggy.core import trialexecutor
 from maggy.core.experiment_driver import optimization, ablation
+from maggy.environment import base
 
 app_id = None
 running = False
@@ -116,7 +119,7 @@ def lagom(
         raise RuntimeError("An experiment is currently running.")
 
     job_start = time.time()
-    sc = hopsutil._find_spark().sparkContext
+    sc = SparkSession.builder.getOrCreate()
     exp_driver = None
 
     try:
@@ -125,16 +128,14 @@ def lagom(
         global run_id
         app_id = str(sc.applicationId)
 
-        app_id, run_id = util._validate_ml_id(app_id, run_id)
-
-        # start run
+        # INIT ENV -> TODO: move state into env
+        # all of this can be moved into the environment
+        environment = base.BaseEnv()
+        app_id, run_id = environment.validate_ml_id(app_id, run_id)
         running = True
-        experiment_utils._set_ml_id(app_id, run_id)
-
-        # create experiment dir
-        experiment_utils._create_experiment_dir(app_id, run_id)
-
-        tensorboard._register(experiment_utils._get_logdir(app_id, run_id))
+        environment.set_ml_id(app_id, run_id)
+        environment.create_experiment_dir(app_id, run_id)
+        environment.init_ml_tracking(app_id, run_id)
 
         num_executors = util.num_executors(sc)
 
@@ -142,9 +143,7 @@ def lagom(
         if experiment_type == "optimization":
 
             assert num_trials > 0, "number of trials should be greater " + "than zero"
-            tensorboard._write_hparams_config(
-                experiment_utils._get_logdir(app_id, run_id), searchspace
-            )
+            environment.log_searchspace(app_id, run_id, searchspace)
 
             if num_executors > num_trials:
                 num_executors = num_trials
@@ -161,7 +160,7 @@ def lagom(
                 es_interval=es_interval,
                 es_min=es_min,
                 description=description,
-                log_dir=experiment_utils._get_logdir(app_id, run_id),
+                log_dir=environment.get_logdir(app_id, run_id),
             )
 
         elif experiment_type == "ablation":
@@ -173,7 +172,7 @@ def lagom(
                 hb_interval=hb_interval,
                 description=description,
                 direction="max",
-                log_dir=experiment_utils._get_logdir(app_id, run_id),
+                log_dir=environment.get_logdir(app_id, run_id),
             )
             # using exp_driver.num_executor since
             # it has been set using ablator.get_number_of_trials()
@@ -197,19 +196,12 @@ def lagom(
         # the type checks for optimizer and searchspace
         sc.setJobGroup(os.environ["ML_ID"], "{0} | {1}".format(name, exp_function))
 
-        experiment_json = experiment_utils._populate_experiment(
-            name,
-            exp_function,
-            "MAGGY",
-            None,
-            description,
-            app_id,
-            direction,
-            optimization_key,
+        experiment_json = environment.populate_experiment_json(
+            name, exp_function, description, app_id, direction, optimization_key
         )
-
-        exp_ml_id = app_id + "_" + str(run_id)
-        experiment_json = experiment_utils._attach_experiment_xattr(exp_ml_id, experiment_json, "INIT")
+        experiment_json = environment.log_experiment_json(
+            app_id, run_id, experiment_json
+        )
 
         util._log(
             "Started Maggy Experiment: {0}, {1}, run {2}".format(name, app_id, run_id)
@@ -230,24 +222,21 @@ def lagom(
                 hb_interval,
                 exp_driver._secret,
                 optimization_key,
-                experiment_utils._get_logdir(app_id, run_id),
+                environment.get_logdir(app_id, run_id),
             )
         )
         job_end = time.time()
 
         result = exp_driver.finalize(job_end)
-        best_logdir = (
-            experiment_utils._get_logdir(app_id, run_id) + "/" + result["best_id"]
-        )
+        best_logdir = environment.get_logdir(app_id, run_id) + "/" + result["best_id"]
 
-        util._finalize_experiment(
+        environment.log_final_experiment_json(
             experiment_json,
             float(result["best_val"]),
             app_id,
             run_id,
             "FINISHED",
             exp_driver.duration,
-            experiment_utils._get_logdir(app_id, run_id),
             best_logdir,
             optimization_key,
         )
@@ -258,7 +247,7 @@ def lagom(
 
     except:  # noqa: E722
         _exception_handler(
-            experiment_utils._seconds_to_milliseconds(time.time() - job_start)
+            util._seconds_to_milliseconds(time.time() - job_start), environment,
         )
         if exp_driver:
             if experiment_type == "optimization":
@@ -284,7 +273,7 @@ def lagom(
     return result
 
 
-def _exception_handler(duration):
+def _exception_handler(duration, environment):
     """
     Handles exceptions during execution of an experiment
 
@@ -297,13 +286,14 @@ def _exception_handler(duration):
         if running and experiment_json is not None:
             experiment_json["state"] = "FAILED"
             experiment_json["duration"] = duration
-            exp_ml_id = app_id + "_" + str(run_id)
-            experiment_utils._attach_experiment_xattr(exp_ml_id, experiment_json, "FULL_UPDATE")
+            environment.log_experiment_json(
+                app_id, run_id, experiment_json, "FULL_UPDATE"
+            )
     except Exception as err:
         util._log(err)
 
 
-def _exit_handler():
+def _exit_handler(environment):
     """
     Handles jobs killed by the user.
     """
@@ -312,8 +302,8 @@ def _exit_handler():
         global experiment_json
         if running and experiment_json is not None:
             experiment_json["status"] = "KILLED"
-            exp_ml_id = app_id + "_" + str(run_id)
-            experiment_utils._attach_experiment_xattr(exp_ml_id, experiment_json, "FULL_UPDATE")
+            # TODO: once env is a singleton we can get it here
+            # environment.log_experiment_json(app_id, run_id, experiment_json, "FULL_UPDATE")
     except Exception as err:
         util._log(err)
 
