@@ -139,8 +139,8 @@ def _prepare_func(
                     reporter.log("Starting Trial: {}".format(trial_id), False)
                     reporter.log("Trial Configuration: {}".format(parameters), False)
 
-                    if experiment_type == "optimization":
-                        tensorboard._write_hparams(parameters, trial_id)
+                    # if experiment_type == "optimization":
+                    # tensorboard._write_hparams(parameters, trial_id)
 
                     sig = inspect.signature(train_fn)
                     if sig.parameters.get("reporter", None):
