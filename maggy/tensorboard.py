@@ -21,6 +21,7 @@ log dir and programmatically structure the outputs.
 
 import tensorflow as tf
 from tensorboard.plugins.hparams import api as hp
+from tensorflow.python.eager import context
 
 _tensorboard_dir = None
 
@@ -82,17 +83,19 @@ def _write_hparams_config(log_dir, searchspace):
         hp.Metric("epoch_accuracy", group="train", display_name="accuracy (train)",),
         hp.Metric("epoch_loss", group="train", display_name="loss (train)",),
     ]
-    _writer = tf.summary.create_file_writer(log_dir)
-    with _writer.as_default():
-        hp.hparams_config(hparams=HPARAMS, metrics=METRICS)
-    _writer.flush()
-    _writer.close()
+    with context.eager_mode():
+        _writer = tf.summary.create_file_writer(log_dir)
+        with _writer.as_default():
+            hp.hparams_config(hparams=HPARAMS, metrics=METRICS)
+        _writer.flush()
+        _writer.close()
 
 
 def _write_hparams(hparams, trial_id):
     global _tensorboard_dir
-    _writer = tf.summary.create_file_writer(_tensorboard_dir)
-    with _writer.as_default():
-        hp.hparams(hparams, trial_id)
-    _writer.flush()
-    _writer.close()
+    with context.eager_mode():
+        _writer = tf.summary.create_file_writer(_tensorboard_dir)
+        with _writer.as_default():
+            hp.hparams(hparams, trial_id)
+        _writer.flush()
+        _writer.close()
