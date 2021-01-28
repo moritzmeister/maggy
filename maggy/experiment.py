@@ -31,7 +31,7 @@ import time
 from hops import util as hopsutil
 from hops.experiment_impl.util import experiment_utils
 
-from maggy import util, tensorboard
+from maggy import util
 from maggy.core import trialexecutor
 from maggy.core.experiment_driver import optimization, ablation
 
@@ -134,6 +134,8 @@ def lagom(
         # create experiment dir
         experiment_utils._create_experiment_dir(app_id, run_id)
 
+        from maggy import tensorboard
+
         tensorboard._register(experiment_utils._get_logdir(app_id, run_id))
 
         num_executors = util.num_executors(sc)
@@ -209,7 +211,9 @@ def lagom(
         )
 
         exp_ml_id = app_id + "_" + str(run_id)
-        experiment_json = experiment_utils._attach_experiment_xattr(exp_ml_id, experiment_json, "INIT")
+        experiment_json = experiment_utils._attach_experiment_xattr(
+            exp_ml_id, experiment_json, "INIT"
+        )
 
         util._log(
             "Started Maggy Experiment: {0}, {1}, run {2}".format(name, app_id, run_id)
@@ -298,7 +302,9 @@ def _exception_handler(duration):
             experiment_json["state"] = "FAILED"
             experiment_json["duration"] = duration
             exp_ml_id = app_id + "_" + str(run_id)
-            experiment_utils._attach_experiment_xattr(exp_ml_id, experiment_json, "FULL_UPDATE")
+            experiment_utils._attach_experiment_xattr(
+                exp_ml_id, experiment_json, "FULL_UPDATE"
+            )
     except Exception as err:
         util._log(err)
 
@@ -313,7 +319,9 @@ def _exit_handler():
         if running and experiment_json is not None:
             experiment_json["status"] = "KILLED"
             exp_ml_id = app_id + "_" + str(run_id)
-            experiment_utils._attach_experiment_xattr(exp_ml_id, experiment_json, "FULL_UPDATE")
+            experiment_utils._attach_experiment_xattr(
+                exp_ml_id, experiment_json, "FULL_UPDATE"
+            )
     except Exception as err:
         util._log(err)
 

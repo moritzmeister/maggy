@@ -89,6 +89,7 @@ def _write_hparams_config(log_dir, searchspace):
             hp.hparams_config(hparams=HPARAMS, metrics=METRICS)
         _writer.flush()
         _writer.close()
+        _writer = None
 
 
 def _write_hparams(hparams, trial_id):
@@ -99,3 +100,4 @@ def _write_hparams(hparams, trial_id):
             hp.hparams(hparams, trial_id)
         _writer.flush()
         _writer.close()
+        _writer = None
